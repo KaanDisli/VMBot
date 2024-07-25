@@ -39,7 +39,10 @@ class VMControl:
                         time_interval = self.get_time_interval(vm)
                         user = self.get_user(vm)
                         self.vm_map[vm] = (vm.runtime.powerState, user, time_interval)
-                        
+    def get_vm_map(self):
+        return self.vm_map                    
+
+
 
     def display_vm_by_machine(self):
         self.update_host_vm_map()
@@ -156,7 +159,7 @@ class VMControl:
         self.whitelist_off_vm_after_delay(vm, old_name,duration)
         self.power_off_vm_after_delay(vm, duration)
         self.set_custom_attributes_none_after_delay(vm,duration)
-        return True
+        return True #whitelisting successfull
     
     
     def get_user(self,vm):
@@ -177,6 +180,14 @@ class VMControl:
             return True
         else: 
             return False
+    def is_linux(self, vm):
+        linux_list = ["ubuntu","debian"]
+        guest_id = vm.config.guestId
+        for elem in linux_list:
+            if guest_id.startswith("elem") :
+                return True
+            else: 
+                return False
         
 
     def set_custom_attribute(self,vm,key,value):
@@ -195,8 +206,29 @@ class VMControl:
     
 
 
+    def unwhitelist_vm(self,vm):
+        bool = self.check_vm_whitelisted(vm)
+        if not bool:
+            False #vm is not whitelisted so we cannot unwhitelist
+        whitelisted_name = vm.name 
+        unwhitelisted_name = whitelisted_name[5:]
+        self.change_vm_name(vm,unwhitelisted_name)
+        self.powerOff_VM(vm)
+        self.set_custom_attributes_none_after_delay(vm,0)
+        return True #unwhitelisting successfull
+    
+
+    def unwhitelist_vm_by_name(self,vm_name):
+        for vm in self.vm_list:
+            if vm.name == vm_name:
+                bool =  self.unwhitelist_vm(vm)
+                return bool
+        self.update_host_vm_map()
+        
+        return -1 #vm doesn't exist
+
     def whitelist_vm_by_name(self,vm_name,duration):
-        if int(duration) > 3600:
+        if int(duration) > 3600: #MODIFY THE MAX DURATION
             return -2
         for vm in self.vm_list:
             if vm.name == vm_name:

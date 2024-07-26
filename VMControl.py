@@ -30,7 +30,6 @@ class VMControl:
         self.host_list = self.content.viewManager.CreateContainerView(self.content.rootFolder, [vim.HostSystem], True).view
         self.host_vm_map = {host.name: [] for host in self.host_list}
         self.vm_map = {vm: (vm.runtime.powerState, "None", "undefined time interval") for vm in self.vm_list}
-        print(self.vm_map)
         for vm in self.vm_list:
             if vm.runtime.host:
                 host_name = vm.runtime.host.name
@@ -48,7 +47,6 @@ class VMControl:
         self.update_host_vm_map()
         str = ""
         for vm, status_user_timeinterval in self.vm_map.items():
-            print(status_user_timeinterval)
             print(f"VM: {vm.name}")
             str = str + f"VM: {vm.name}\n"
             status, user, timeinterval = status_user_timeinterval
@@ -89,7 +87,6 @@ class VMControl:
 
     #Powers off after a certain delay for a virtual machine
     def power_off_vm_after_delay(self,vm, delay_seconds):
-            print(type(delay_seconds))
             print(f"Powering off after {delay_seconds} seconds")
             threading.Timer(delay_seconds, self.powerOff_VM, [vm]).start()
 
@@ -211,7 +208,10 @@ class VMControl:
         if not bool:
             False #vm is not whitelisted so we cannot unwhitelist
         whitelisted_name = vm.name 
-        unwhitelisted_name = whitelisted_name[5:]
+        if self.check_vm_whitelisted(vm):
+            unwhitelisted_name = whitelisted_name[5:]
+        else:
+            unwhitelisted_name = whitelisted_name
         self.change_vm_name(vm,unwhitelisted_name)
         self.powerOff_VM(vm)
         self.set_custom_attributes_none_after_delay(vm,0)

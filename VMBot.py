@@ -8,25 +8,17 @@ import VMControl
 import traceback
 from pyVmomi import vim
 from datetime import timedelta
+from services import user_service
+
+
 VMControl = VMControl.VMControl()
 
 Username = "@VMBBBBot"
 url = "http://127.0.0.1:5000"
 token = "7425220594:AAFJqNADAboDwaf77IN5cfuV1rIlYlyuPVs"
 bot = telebot.TeleBot(token)
+users = user_service.Users()  
 
-#stored like this for now will be securized in the future 
-admin_chat_id_dico = {"Kaan" :1536482607}
-user_chat_id_dico = {"Kaan":1536482607}
-
-def get_user_chat_id(username):
-    return user_chat_id_dico[username]
-def get_chat_id_user(chat_id):
-    for key in  user_chat_id_dico:
-        print(f"key: {key}")
-        if user_chat_id_dico[key] == int(chat_id):
-            return key
-        
 
 class MockMessage:
     def __init__(self, text, chat_id ):
@@ -160,7 +152,7 @@ def unwhitelist_command(message):
         bot.send_message(message.chat.id,"Error")
 
 def admin_confirm(vm_name,duration,chat_id_user):
-    username = get_chat_id_user(chat_id_user)
+    username = users.get_username_from_chat_id(chat_id_user)
     duration_string = convert_seconds_to_string(duration)
     message_to_send_admins = f"Do you accept a whitelist request for machine {vm_name} from {username} for a duration of {duration_string} "
     keyboard_admin = telebot.types.InlineKeyboardMarkup()
@@ -168,8 +160,8 @@ def admin_confirm(vm_name,duration,chat_id_user):
     button_admin2 = telebot.types.InlineKeyboardButton(text="No", callback_data=f"No:{vm_name}:{chat_id_user}:{duration}")
     keyboard_admin.add(button_admin1)
     keyboard_admin.add(button_admin2)
-    for admin in admin_chat_id_dico:
-        chat_id_admin = admin_chat_id_dico[admin]
+    admin_chat_id_dico = users.get_all_admin_chat_id()
+    for chat_id_admin in admin_chat_id_dico:
         bot.send_message(chat_id_admin, message_to_send_admins,reply_markup=keyboard_admin)
 
 

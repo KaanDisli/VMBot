@@ -228,7 +228,7 @@ class VMControl:
         return -1 #vm doesn't exist
 
     def whitelist_vm_by_name(self,vm_name,duration):
-        if int(duration) > 3600: #MODIFY THE MAX DURATION
+        if int(duration) > 86400: #MAX DURATION OF 3 WEEKS
             return -2
         for vm in self.vm_list:
             if vm.name == vm_name:

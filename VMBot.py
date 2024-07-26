@@ -7,6 +7,7 @@ import json
 import VMControl
 import traceback
 from pyVmomi import vim
+from datetime import timedelta
 VMControl = VMControl.VMControl()
 
 Username = "@VMBBBBot"
@@ -36,7 +37,25 @@ class MockChat:
         self.id = chat_id
 
 
-def generate_buttons(dico,chat_id):
+def convert_seconds_to_string(seconds):
+    time_delta = timedelta(seconds=int(seconds))
+    days = time_delta.days
+    hours, remainder = divmod(time_delta.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    return f"{days} days, {hours} hours, {minutes} minutes, {seconds} seconds"
+
+def generate_time_buttons(chat_id,vm_name):
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    button_20_seconds = telebot.types.InlineKeyboardButton(text="20 seconds", callback_data=f"time:20:{vm_name}:{chat_id}")
+    button_1_day = telebot.types.InlineKeyboardButton(text="1 day", callback_data=f"time:86400:{vm_name}:{chat_id}")
+    button_3_days = telebot.types.InlineKeyboardButton(text="3 days", callback_data=f"time:259200:{vm_name}:{chat_id}")
+    button_1_week = telebot.types.InlineKeyboardButton(text="1 week", callback_data=f"time:604800:{vm_name}:{chat_id}")
+    button_3_weeks = telebot.types.InlineKeyboardButton(text="3 weeks", callback_data=f"time:1814400:{vm_name}:{chat_id}")
+    keyboard.add(button_20_seconds,button_1_day,button_3_days,button_1_week,button_3_weeks)
+    bot.send_message(chat_id,"Please choose for how long you want to whitelist the machine",reply_markup=keyboard)
+
+def generate_vm_buttons(dico,chat_id):
     keyboard = telebot.types.InlineKeyboardMarkup()
     for vm, str in dico.items():
         powerState, User, time_interval = str
@@ -73,7 +92,7 @@ def help_command(message):
 def display_vm_by_machine_command(message):
     try:
         dico =  VMControl.get_vm_map()
-        keyboard = generate_buttons(dico,message.chat.id)
+        keyboard = generate_vm_buttons(dico,message.chat.id)
         bot.send_message(message.chat.id,"Click on a machine to whitelist",reply_markup=keyboard)
 
     except Exception as e :
@@ -81,7 +100,9 @@ def display_vm_by_machine_command(message):
         bot.send_message(message.chat.id,"Error")
 
 @bot.message_handler(commands=(["whitelist"]))
+####WE NEED TO MAKE SURE THIS COMMAND IS NOT ACCESSED BY USERS WITHOUT ADMIN VERIFICATION LATER
 def whitelist_command(message):
+    
     try:
         parameters = extract_arg(message.text)
         if parameters == []:
@@ -98,7 +119,7 @@ def whitelist_command(message):
                 if val == -1:
                     message_to_send = f"Machine name incorrect"
                 elif val == -2:
-                    message_to_send = f"Inappropriate duration, please choose a duration less than an hour (3600 seconds) "
+                    message_to_send = f"Inappropriate duration, please choose a duration less than 3 weeks "
                 else:
                     message_to_send = f"Your request was accepted! Machine {vm_name} is now whitelisted"
                    
@@ -140,10 +161,11 @@ def unwhitelist_command(message):
 
 def admin_confirm(vm_name,duration,chat_id_user):
     username = get_chat_id_user(chat_id_user)
-    message_to_send_admins = f"Do you accept a whitelist request for machine {vm_name} from {username} for a duration of {duration}" #X will be fixed later
+    duration_string = convert_seconds_to_string(duration)
+    message_to_send_admins = f"Do you accept a whitelist request for machine {vm_name} from {username} for a duration of {duration_string} "
     keyboard_admin = telebot.types.InlineKeyboardMarkup()
-    button_admin1 = telebot.types.InlineKeyboardButton(text=f"Yes", callback_data=f"Yes:{vm_name}:{chat_id_user}")
-    button_admin2 = telebot.types.InlineKeyboardButton(text="No", callback_data=f"No:{vm_name}:{chat_id_user}")
+    button_admin1 = telebot.types.InlineKeyboardButton(text=f"Yes", callback_data=f"Yes:{vm_name}:{chat_id_user}:{duration}")
+    button_admin2 = telebot.types.InlineKeyboardButton(text="No", callback_data=f"No:{vm_name}:{chat_id_user}:{duration}")
     keyboard_admin.add(button_admin1)
     keyboard_admin.add(button_admin2)
     for admin in admin_chat_id_dico:
@@ -151,7 +173,51 @@ def admin_confirm(vm_name,duration,chat_id_user):
         bot.send_message(chat_id_admin, message_to_send_admins,reply_markup=keyboard_admin)
 
 
-@bot.callback_query_handler(func=lambda call:True)
+@bot.callback_query_handler(func=lambda call:call.data.startswith("time"))
+def handle_time(call):
+    time, duration, vm_name, chat_id_user = call.data.split(':')
+    admin_confirm(vm_name, duration,chat_id_user)
+
+
+@bot.callback_query_handler(func=lambda call:call.data.startswith("display_vm_by_machine"))
+def handle_display_vm_by_machine(call):
+    print("inside display_vm_by_machine callbackquery handler ")
+    display_vm_by_machine_command(call.message)
+    
+@bot.callback_query_handler(func=lambda call:call.data.startswith("whitelist"))
+def handle_whitelist(call):
+    action, vm_name, chat_id_user = call.data.split(':')
+    ###send all admins a request, if he confirms continue with the whitelisting
+    generate_time_buttons(chat_id_user,vm_name)
+    
+
+@bot.callback_query_handler(func=lambda call:call.data.startswith("unwhitelist"))
+def handle_unwhitelist(call):
+    action, vm_name, chat_id_user = call.data.split(':')
+    text = f"/unwhitelist {vm_name}"
+    message =  MockMessage(text,chat_id_user)
+    unwhitelist_command(message)
+
+@bot.callback_query_handler(func=lambda call:call.data.startswith("Yes"))
+def handle_yes(call):
+    action, vm_name, chat_id_user, duration = call.data.split(':')
+    text = f"/whitelist {vm_name} {duration}"
+    message =  MockMessage(text,chat_id_user)
+    whitelist_command(message)
+
+@bot.callback_query_handler(func=lambda call:call.data.startswith("No"))
+def handle_no(call):
+    bot.send_message(call.message.chat.id, "Sorry your request was denied by an admin")
+
+
+
+
+
+
+
+
+
+"""@bot.callback_query_handler(func=lambda call:True)
 def handle_button(call):
     if call.data == "display_vm_by_machine":
         display_vm_by_machine_command(call.message)
@@ -161,6 +227,7 @@ def handle_button(call):
         #param is vm_name
         duration = 20
         ###send all admins a request, if he confirms continue with the whitelisting
+        generate_time_buttons(chat_id_user,vm_name)
         admin_confirm(vm_name, duration,chat_id_user)
     elif action == "unwhitelist":
         text = f"/unwhitelist {vm_name}"
@@ -173,6 +240,10 @@ def handle_button(call):
         text = f"/whitelist {vm_name} {duration}"
         message =  MockMessage(text,chat_id_user)
         whitelist_command(message)
+
+"""
+
+
 
 print("Polling...")
 bot.polling(none_stop=True)

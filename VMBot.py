@@ -15,7 +15,7 @@ VMControl = VMControl.VMControl()
 
 Username = "@VMBBBBot"
 url = "http://127.0.0.1:5000"
-token = "7425220594:AAFJqNADAboDwaf77IN5cfuV1rIlYlyuPVs"
+token = "****"
 bot = telebot.TeleBot(token)
 users = user_service.Users()  
 

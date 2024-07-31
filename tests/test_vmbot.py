@@ -3,8 +3,10 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from unittest.mock import patch, MagicMock
-from VMBot import start_command, help_command, display_vm_by_machine_command, whitelist_command,unwhitelist_command,admin_confirm,convert_seconds_to_string_fixed
+from VMBot import start_command, help_command, display_vm_by_machine_command, whitelist_command,unwhitelist_command,admin_confirm,convert_seconds_to_string_fixed,generate_vm_buttons,generate_time_buttons,handle_time,handle_display_vm_by_machine,handle_whitelist,handle_unwhitelist,handle_yes,handle_no
+from VMControl import VMControl
 import telebot 
+from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 
@@ -178,6 +180,110 @@ class Test_VmBot(unittest.TestCase):
         admin_confirm("vm1",mock_duration,mock_message_user.chat.id)
 
         mock_bot.send_message.assert_called_with(mock_message_admin.chat.id, mock_message_to_send_admins,reply_markup=mock_keyboard)
+    
+    @patch('VMBot.bot')
+    @patch('telebot.types.InlineKeyboardMarkup')
+    def test_generate_time_buttons(self,MockInlineKeyboardMarkup,mock_bot):
+        mock_keyboard = MockInlineKeyboardMarkup.return_value  
+        mock_message = MagicMock()
+        mock_message.chat.id = 123456789
+        generate_time_buttons(mock_message.chat.id ,"vm1")
+        mock_bot.send_message.assert_called_with(mock_message.chat.id,"Please choose for how long you want to whitelist the machine",reply_markup=mock_keyboard)
+
+
+    def test_generate_vm_buttons(self):
+        mock_vm= MagicMock()
+        mock_vm.name = "vm1"
+        mock_dico = {mock_vm:["poweredOn","Kaan","time_interval"]}       
+        expected_keyboard = InlineKeyboardMarkup()  
+        mock_message = MagicMock()
+        mock_message.chat.id = 123456789
+        button = InlineKeyboardButton(text="vm1 , poweredOn", callback_data=f"unwhitelist:vm1:123456789")
+        expected_keyboard.add(button)
+        generated_keyboard = generate_vm_buttons(mock_dico,mock_message.chat.id)
+        self.assertEqual(expected_keyboard.to_dict(),generated_keyboard.to_dict())
+
+
+    @patch('VMBot.admin_confirm')
+    @patch('telebot.types.CallbackQuery')
+    def test_handle_time(self,MockCallBack,mock_admin_confirm):
+        
+        MockCall = MockCallBack()
+        MockCall.data = "time:86400:vm1:123456789"
+        handle_time(MockCall)
+        mock_admin_confirm.assert_called_once_with("vm1", "86400", "123456789")
+
+    @patch('VMBot.display_vm_by_machine_command')
+    @patch('telebot.types.CallbackQuery')
+    def test_handle_display_vm_by_machine(self,MockCallBack,mock_display):
+        MockCall = MockCallBack()
+        mock_message = MagicMock()
+        mock_message.chat.id = "123456789"
+        MockCall.message = mock_message
+        MockCall.data  = "display_vm_by_machine"
+        handle_display_vm_by_machine(MockCall)
+        mock_display.assert_called_once_with(MockCall.message)
+
+    @patch('VMBot.generate_time_buttons')
+    @patch('telebot.types.CallbackQuery')
+    def test_handle_whitelist(self,MockCallBack,mock_generate):
+        MockCall = MockCallBack()
+        MockCall.data = "whitelist:vm1:123456789"
+        handle_whitelist(MockCall)
+        mock_generate.assert_called_once_with("123456789","vm1")
+
+
+    @patch('VMBot.MockMessage')
+    @patch('VMBot.unwhitelist_command')
+    @patch('telebot.types.CallbackQuery')
+    def test_handle_unwhitelist(self,MockCallBack,mock_unwhitelist,MockMessage):
+        MockCall = MockCallBack()
+        MockCall.data = "unwhitelist:vm1:123456789"
+        mock_message =  MockMessage()
+        mock_message.chat.id = "123456789"
+        mock_message.text = "/unwhitelist vm1"
+        handle_unwhitelist(MockCall)
+        mock_unwhitelist.assert_called_once_with(mock_message)
+
+
+    @patch('VMBot.whitelist_command')
+    @patch('VMBot.MockMessage')
+    @patch('VMBot.users')
+    @patch('telebot.types.CallbackQuery')
+    def test_handle_yes(self,MockCallBack,mock_users,MockMessage,mock_whitelist):
+        mock_users.get_username_from_chat_id.return_value = "Kaan"
+        MockCall = MockCallBack()
+        MockCall.data = "Yes:vm1:123456789:86400"
+        text = f"/whitelist vm1 86400"
+        mock_message =  MockMessage(text,"123456789")
+        handle_yes(MockCall)
+        mock_whitelist.assert_called_once_with(mock_message)
+
+    @patch('VMBot.bot')
+    @patch('VMBot.MockMessage')
+    @patch('VMBot.users')
+    @patch('telebot.types.CallbackQuery')
+    def test_handle_no(self,MockCallBack,mock_users,MockMessage,mock_bot):
+        mock_users.get_username_from_chat_id.return_value = "Kaan"
+        MockCall = MockCallBack()
+        MockCall.data = "Yes:vm1:123456789:86400"
+        text = f"/whitelist vm1 86400"
+        mock_message =  MockMessage(text,"123456789")
+        handle_no(MockCall)
+        mock_bot.send_message.assert_called_with("123456789","Sorry your request was denied by an admin")
+
+    
+"""    @patch.object(VMControl, '__init__', lambda x: None) 
+    def test_change_vm_name(self,):
+        vm_control_instance = VMControl()
+        mock_vm= MagicMock()
+        mock_vm.name = "vm1"
+        new_name = "vm2"
+        mock_vm.ReconfigVM_Task = MagicMock()
+        vm_control_instance.update_host_vm_map  = MagicMock()
+        vm_control_instance.change_vm_name(mock_vm,new_name)
+        mock_vm.ReconfigVM_Task.assert_called_once()"""
+
 
 if __name__ == "__main__":
     unittest.main()

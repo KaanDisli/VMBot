@@ -9,17 +9,12 @@ import traceback
 from pyVmomi import vim
 from datetime import timedelta
 from services import user_service
-
-
-<<<<<<< HEAD
 token = "7425220594:AAFJqNADAboDwaf77IN5cfuV1rIlYlyuPVs"
-=======
-VMControl = VMControl.VMControl()
+
 
 Username = "@VMBBBBot"
 url = "http://127.0.0.1:5000"
-token = "****"
->>>>>>> c1286c7b501f38341d88f175042bce494319e6f3
+
 bot = telebot.TeleBot(token)
 users = user_service.Users()
 class MockMessage:
@@ -64,11 +59,9 @@ def generate_time_buttons(chat_id,vm_name):
 def generate_vm_buttons(dico,chat_id):
     keyboard = telebot.types.InlineKeyboardMarkup()
     for vm, str in dico.items():
-        powerState, User, time_interval = str
-        if VMControl.is_linux(vm):
-            display_name = f"{vm.name} , {powerState}"
-        else:    
-            display_name = f"{vm.name}, {powerState}"
+        powerState, User, time_interval = str 
+        display_name = f"{vm.name} , {powerState}"
+
 
         if vm.runtime.powerState == vim.VirtualMachinePowerState.poweredOff:
             whitelist_or_unwhitelist = "whitelist"
@@ -221,41 +214,6 @@ def handle_no(call):
     action, vm_name, chat_id_user, duration = call.data.split(':')
     users.add_log(f"The request was denied by admin {admin_name}")
     bot.send_message(chat_id_user, "Sorry your request was denied by an admin")
-
-
-
-
-
-
-
-
-
-"""@bot.callback_query_handler(func=lambda call:True)
-def handle_button(call):
-    if call.data == "display_vm_by_machine":
-        display_vm_by_machine_command(call.message)
-        return
-    action, vm_name, chat_id_user = call.data.split(':') 
-    if action == "whitelist":
-        #param is vm_name
-        duration = 20
-        ###send all admins a request, if he confirms continue with the whitelisting
-        generate_time_buttons(chat_id_user,vm_name)
-        admin_confirm(vm_name, duration,chat_id_user)
-    elif action == "unwhitelist":
-        text = f"/unwhitelist {vm_name}"
-        message =  MockMessage(text,chat_id_user)
-        unwhitelist_command(message)
-    elif action == "No":
-        bot.send_message(call.message.chat.id, "Sorry your request was denied by an admin")
-    elif action == "Yes":
-        duration = 20 
-        text = f"/whitelist {vm_name} {duration}"
-        message =  MockMessage(text,chat_id_user)
-        whitelist_command(message)
-
-"""
-
 
 
 if __name__ == "__main__":

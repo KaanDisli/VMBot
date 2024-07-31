@@ -11,15 +11,9 @@ from datetime import timedelta
 from services import user_service
 
 
-VMControl = VMControl.VMControl()
-
-Username = "@VMBBBBot"
-url = "http://127.0.0.1:5000"
 token = "7425220594:AAFJqNADAboDwaf77IN5cfuV1rIlYlyuPVs"
 bot = telebot.TeleBot(token)
-users = user_service.Users()  
-
-
+users = user_service.Users()
 class MockMessage:
     def __init__(self, text, chat_id ):
         self.chat = MockChat(chat_id)
@@ -36,6 +30,18 @@ def convert_seconds_to_string(seconds):
     minutes, seconds = divmod(remainder, 60)
 
     return f"{days} days, {hours} hours, {minutes} minutes, {seconds} seconds"
+
+def convert_seconds_to_string_fixed(seconds):
+    if seconds == 86400:
+        return "1 day"
+    elif seconds == 259200:
+        return "3 days"
+    elif seconds == 604800: 
+        return "1 week"
+    elif seconds == 1814400:
+        return "3 weeks"
+    else:
+        return -1
 
 def generate_time_buttons(chat_id,vm_name):
     keyboard = telebot.types.InlineKeyboardMarkup()
@@ -153,7 +159,9 @@ def unwhitelist_command(message):
 
 def admin_confirm(vm_name,duration,chat_id_user):
     username = users.get_username_from_chat_id(chat_id_user)
-    duration_string = convert_seconds_to_string(duration)
+    duration_string = convert_seconds_to_string_fixed(duration)
+    log_message = f"Machine {vm_name} was requested to be whitelisted by {username} for a duration of {duration_string}"
+    users.add_log(log_message)
     message_to_send_admins = f"Do you accept a whitelist request for machine {vm_name} from {username} for a duration of {duration_string} "
     keyboard_admin = telebot.types.InlineKeyboardMarkup()
     button_admin1 = telebot.types.InlineKeyboardButton(text=f"Yes", callback_data=f"Yes:{vm_name}:{chat_id_user}:{duration}")
@@ -193,13 +201,18 @@ def handle_unwhitelist(call):
 @bot.callback_query_handler(func=lambda call:call.data.startswith("Yes"))
 def handle_yes(call):
     action, vm_name, chat_id_user, duration = call.data.split(':')
+    admin_name = users.get_username_from_chat_id(call.message.chat.id)
+    users.add_log(f"The request was accepted by admin {admin_name}")
     text = f"/whitelist {vm_name} {duration}"
     message =  MockMessage(text,chat_id_user)
     whitelist_command(message)
 
 @bot.callback_query_handler(func=lambda call:call.data.startswith("No"))
 def handle_no(call):
-    bot.send_message(call.message.chat.id, "Sorry your request was denied by an admin")
+    admin_name = users.get_username_from_chat_id(call.message.chat.id)
+    action, vm_name, chat_id_user, duration = call.data.split(':')
+    users.add_log(f"The request was denied by admin {admin_name}")
+    bot.send_message(chat_id_user, "Sorry your request was denied by an admin")
 
 
 
@@ -237,5 +250,14 @@ def handle_button(call):
 
 
 
-print("Polling...")
-bot.polling(none_stop=True)
+if __name__ == "__main__":
+    try:
+        VMControl = VMControl.VMControl()
+        Username = "@VMBBBBot"
+        url = "http://127.0.0.1:5000"
+        
+        print("Polling...")
+        bot.polling(none_stop=True)
+    except Exception as e:
+        print(f"Failed to start polling: {e}")
+

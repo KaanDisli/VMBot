@@ -11,7 +11,15 @@ from datetime import timedelta
 from services import user_service
 
 
+<<<<<<< HEAD
 token = "7425220594:AAFJqNADAboDwaf77IN5cfuV1rIlYlyuPVs"
+=======
+VMControl = VMControl.VMControl()
+
+Username = "@VMBBBBot"
+url = "http://127.0.0.1:5000"
+token = "****"
+>>>>>>> c1286c7b501f38341d88f175042bce494319e6f3
 bot = telebot.TeleBot(token)
 users = user_service.Users()
 class MockMessage:

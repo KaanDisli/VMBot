@@ -35,13 +35,13 @@ def convert_seconds_to_string(seconds):
     return f"{days} days, {hours} hours, {minutes} minutes, {seconds} seconds"
 
 def convert_seconds_to_string_fixed(seconds):
-    if seconds == 86400:
+    if seconds == "86400":
         return "1 day"
-    elif seconds == 259200:
+    elif seconds == "259200":
         return "3 days"
-    elif seconds == 604800: 
+    elif seconds == "604800": 
         return "1 week"
-    elif seconds == 1814400:
+    elif seconds == "1814400":
         return "3 weeks"
     else:
         return -1
@@ -160,6 +160,7 @@ def unwhitelist_command(message):
 
 def admin_confirm(vm_name,duration,chat_id_user):
     username = users.get_username_from_chat_id(chat_id_user)
+    print(f"duration:{duration}")
     duration_string = convert_seconds_to_string_fixed(duration)
     log_message = f"Machine {vm_name} was requested to be whitelisted by {username} for a duration of {duration_string}"
     users.add_log(log_message)

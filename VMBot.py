@@ -47,14 +47,26 @@ def convert_seconds_to_string_fixed(seconds):
         return -1
 
 def generate_time_buttons(chat_id,vm_name):
-    keyboard = telebot.types.InlineKeyboardMarkup()
-    button_20_seconds = telebot.types.InlineKeyboardButton(text="20 seconds", callback_data=f"time:20:{vm_name}:{chat_id}")
-    button_1_day = telebot.types.InlineKeyboardButton(text="1 day", callback_data=f"time:86400:{vm_name}:{chat_id}")
-    button_3_days = telebot.types.InlineKeyboardButton(text="3 days", callback_data=f"time:259200:{vm_name}:{chat_id}")
-    button_1_week = telebot.types.InlineKeyboardButton(text="1 week", callback_data=f"time:604800:{vm_name}:{chat_id}")
-    button_3_weeks = telebot.types.InlineKeyboardButton(text="3 weeks", callback_data=f"time:1814400:{vm_name}:{chat_id}")
-    keyboard.add(button_20_seconds,button_1_day,button_3_days,button_1_week,button_3_weeks)
-    bot.send_message(chat_id,"Please choose for how long you want to whitelist the machine",reply_markup=keyboard)
+    ##try:
+    username = users.get_username_from_chat_id(chat_id)
+    print(f"username {username}")
+    try:
+        if "linux" in vm_name.lower():
+            users.increment_linux(username)
+        else:
+            users.increment_windows(username)
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        button_20_seconds = telebot.types.InlineKeyboardButton(text="20 seconds", callback_data=f"time:20:{vm_name}:{chat_id}")
+        button_1_day = telebot.types.InlineKeyboardButton(text="1 day", callback_data=f"time:86400:{vm_name}:{chat_id}")
+        button_3_days = telebot.types.InlineKeyboardButton(text="3 days", callback_data=f"time:259200:{vm_name}:{chat_id}")
+        button_1_week = telebot.types.InlineKeyboardButton(text="1 week", callback_data=f"time:604800:{vm_name}:{chat_id}")
+        button_3_weeks = telebot.types.InlineKeyboardButton(text="3 weeks", callback_data=f"time:1814400:{vm_name}:{chat_id}")
+        keyboard.add(button_20_seconds,button_1_day,button_3_days,button_1_week,button_3_weeks)
+        bot.send_message(chat_id,"Please choose for how long you want to whitelist the machine",reply_markup=keyboard)
+    except Exception as e :
+        print(e)
+        bot.send_message(chat_id,e)
+        
 
 def generate_vm_buttons(dico,chat_id):
     keyboard = telebot.types.InlineKeyboardMarkup()
@@ -147,7 +159,15 @@ def unwhitelist_command(message):
                     message_to_send = f"Machine name incorrect"
                 else:
                     message_to_send = f"Machine {vm_name} is now unwhitelisted"
-                   
+                    try:
+                        
+                        username = users.get_username_from_chat_id(message.chat.id)
+                        if "linux" in vm_name.lower():
+                            users.decrement_linux(username)
+                        else:
+                            users.decrement_windows(username)
+                    except Exception as e :
+                        message_to_send = e
             else:
                 message_to_send = "Machine already unwhitelisted"
         bot.send_message(message.chat.id,message_to_send)
@@ -188,6 +208,7 @@ def handle_display_vm_by_machine(call):
     
 @bot.callback_query_handler(func=lambda call:call.data.startswith("whitelist"))
 def handle_whitelist(call):
+    print(call.data)
     action, vm_name, chat_id_user = call.data.split(':')
     ###send all admins a request, if he confirms continue with the whitelisting
     generate_time_buttons(chat_id_user,vm_name)

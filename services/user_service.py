@@ -3,7 +3,7 @@ import psycopg2
 from datetime import datetime
 class Users:
         def __init__(self) -> None:
-            self.conn = psycopg2.connect(host="localhost",dbname="postgres", user="postgres", password="kaan2002", port=5432)
+            self.conn = psycopg2.connect(host="localhost",dbname="postgres", user="postgres", password="***", port=5432)
             self.cur = self.conn.cursor()
             self.cur.execute("""CREATE TABLE IF NOT EXISTS users (
                         id INT PRIMARY KEY,

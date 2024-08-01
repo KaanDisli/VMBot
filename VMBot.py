@@ -9,7 +9,7 @@ import traceback
 from pyVmomi import vim
 from datetime import timedelta
 from services import user_service
-token = "7425220594:AAFJqNADAboDwaf77IN5cfuV1rIlYlyuPVs"
+token = "***"
 
 
 Username = "@VMBBBBot"
